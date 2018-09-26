@@ -51,14 +51,17 @@ HOME_PATH=$HOME
 DATA_PATH=$HOME/.local/aen
 LICENSE_KEY=""
 IMAGE_NAME="aenco/master-node:latest"
-URL_DEVICE_REGISTRATION="https://aenchainconf.local/device/registration"
-DOCKER_BINARY_PATH="/var/app/src/_build/bin/"
-NETWORK_IDENTIFIER="testnet"
-NETWORK_CONFIGURATION="testnet"
+URL_DEVICE_REGISTRATION="http://localhost:8080/device/register"
+URL_DEVICE_CONFIGURATION="http://localhost:8080/device/###id###/configuration"
+URL_DEVICE_DATA="http://localhost:8080/device/###id###/data"
+DOCKER_BINARY_PATH="/usr/local/bin/"
+NETWORK_IDENTIFIER="public-test"
+NETWORK_CONFIGURATION="public-test"
 DEVICE_PROFILE="peer"
 PRIVATE_KEY=""
 PUBLIC_KEY=""
 ADDRESS=""
+TITLE="default_device"
 
 if [[ $# -eq 0 ]] ; then
     halt_installation "No parameters supplied. If you are sure you want to run with no options, use --useDefaults"
@@ -76,7 +79,7 @@ while [ $# -gt 0 ]; do
     --useDefaults)
       echo "--- Running with default parameters ---"
       ;;
-    --licenseKey|-l=*)
+    --licenseKey=*)
       LICENSE_KEY="${1#*=}"
       ;;
     --imageName|-i=*)
@@ -118,6 +121,8 @@ if [ ! -d "$DATA_PATH" ]; then
   if [ ! -d "$DATA_PATH" ]; then
     halt_installation "Could not create data path: $DATA_PATH"
   fi
+  mkdir -p $DATA_PATH/data
+  mkdir -p $DATA_PATH/config
 fi
 
 
@@ -211,30 +216,41 @@ done < /tmp/network_address
 echo "=== Register the node ==="
 
 OUTPUT_PATH=$DATA_PATH/config.tar
-echo "Downloading configuration to $OUTPUT_PATH"
-# TODO Remove the k option from the command below once on established server with working cert
-curl -k -s -o $OUTPUT_PATH --request POST $URL_DEVICE_REGISTRATION \
+
+CURL_REGISTER_OUTPUT=$(curl -k -s --request POST $URL_DEVICE_REGISTRATION \
   --data "blockchainAddress=$ADDRESS" \
   --data "title=$TITLE" \
   --data "licenseKey=$LICENSE_KEY" \
   --data "deviceSpec=$DEVICE_SPEC" \
   --data "blockchainPublicKey=$PUBLIC_KEY" \
-  --data "networkConfiguration=$NETWORK_CONFIGURATION"
+  --data "networkConfiguration=$NETWORK_CONFIGURATION")
 
-echo "=== Unpack configuration ==="
-tar xf $OUTPUT_PATH --directory $DATA_PATH
+echo $CURL_REGISTER_OUTPUT
+DEVICE_ID=$( jq '.deviceId' <<< "${CURL_REGISTER_OUTPUT}" )
+echo "Device ID: $DEVICE_ID"
 
-# TODO Implement this
-# echo -n "Do you want to create a shortcut [Y/n]: (Currently inoperable)"
-# read SHORTCUT_ANSWER
-# if [ $SHORTCUT_ANSWER = "Y"]; then
-#   echo 'Creating a shortcut'
-# fi
+URL_DEVICE_CONFIGURATION=$(sed -e "s/###id###/$DEVICE_ID/g" <<< $URL_DEVICE_CONFIGURATION)
+echo "Downloading configuration from: $URL_DEVICE_CONFIGURATION"
+curl -k -s -o $DATA_PATH/config.tar.gz --request GET $URL_DEVICE_CONFIGURATION
+tar xf $DATA_PATH/config.tar.gz --directory $DATA_PATH/config
 
-echo "=== Starting up Network Node ==="
-# TODO Edit this run command once Docker image updated
-docker run -it -d -v $DATA_PATH/config:/var/aen/config -v $DATA_PATH/data:/var/aen/data aenco/master-node:latest /var/app/src/_build/bin/aen.server /var/aen/config
+URL_DEVICE_DATA=$(sed -e "s/###id###/$DEVICE_ID/g" <<< $URL_DEVICE_DATA)
+echo "Downloading initial network data from: $URL_DEVICE_DATA"
+curl -k -s -o $DATA_PATH/data.tar.gz --request GET $URL_DEVICE_DATA
+tar xf $DATA_PATH/data.tar.gz --directory $DATA_PATH/data
+
+#
+# # TODO Implement this
+# # echo -n "Do you want to create a shortcut [Y/n]: (Currently inoperable)"
+# # read SHORTCUT_ANSWER
+# # if [ $SHORTCUT_ANSWER = "Y"]; then
+# #   echo 'Creating a shortcut'
+# # fi
+#
+# echo "=== Starting up Network Node ==="
+# # TODO Edit this run command once Docker image updated
+# docker run -it -d -v $DATA_PATH/config:/var/aen/config -v $DATA_PATH/data:/var/aen/data aenco/master-node:latest /var/app/src/_build/bin/aen.server /var/aen/config
 
 echo "=== Installation Complete"
-docker ps
+# docker ps
 dump_variables
