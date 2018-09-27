@@ -14,43 +14,33 @@ halt_installation() {
 }
 
 logo() {
-  echo << EOF
-  .............................=..............................
-  ............................===.............................
-  ...........................=====............................
-  ...........................=====............................
-  ..........................=======...........................
-  .........................=========..........................
-  .........................=========..........................
-  ........................===========.........................
-  .......................=============........................
-  .......................=============........................
-  ......................===============.......................
-  .....................,===============~......................
-  .....................=================......................
-  ....................=========.=========.....................
-  ....................======:......======.....................
-  ...................====~............====....................
-  ...................=:..................=....................
-  ............................................................
-  ...............==.........................==................
-  ............~===...........................===~.............
-  ..........=====.............................=====...........
-  .......,=======..............+=.............,======,........
-  .....=========.............=++++.............=========......
-  ...==========.............=++++++.............==========....
-  ============.............+++++++++.............============.
-  ~===========............+++++++++++............============.
-  ...==========..........~++++++++++++..........==========~...
-  .....=========........:+++++++++++++=........=========......
-  .......,=======......~+++++++:+++++++=......~======:........
-  ..........=====......+++++=.....:++++++.....=====...........
-  .............===...:++++...........~+++~...===..............
-  ...............==.+++.................+++.==................
-  ............................................................
+  echo << EOF "
+  MMMMMMMMMMMMMMMMMMMIMMMMMMMMMMMMMMMMMMMM
+  MMMMMMMMMMMMMMMMMMIIIMMMMMMMMMMMMMMMMMMM
+  MMMMMMMMMMMMMMMMMIIIIIMMMMMMMMMMMMMMMMMM
+  MMMMMMMMMMMMMMMMMIIIIIMMMMMMMMMMMMMMMMMM
+  MMMMMMMMMMMMMMMMIIIIIIIMMMMMMMMMMMMMMMMM
+  MMMMMMMMMMMMMMMIIIIIIIIIMMMMMMMMMMMMMMMM
+  MMMMMMMMMMMMMMMIIIIIIIIIMMMMMMMMMMMMMMMM
+  MMMMMMMMMMMMMMIIIIIIIIIIIMMMMMMMMMMMMMMM
+  MMMMMMMMMMMMMMIIIIIIIIIIIDMMMMMMMMMMMMMM
+  MMMMMMMMMMMMMIIII8MMMMIIIIMMMMMMMMMMMMMM
+  MMMMMMMMMMMMIIIMMMMMMMMMDI7MMMMMMMMMMMMM
+  MMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMM
+  MMMMMMMMMIIMMMMMMMMMMMMMMMMMIIMMMMMMMMMM
+  MMMMMM?IIIMMMMMMMMMMMMMMMMMMMIII7MMMMMMM
+  MMMM7IIIIMMMMMMMMMD?IMMMMMMMMMIIIIIMMMMM
+  MMIIIIIIMMMMMMMMM7???+MMMMMMMMMIIIIIIMMM
+  IIIIIIIIMMMMMMMM???????MMMMMMMMIIIIIIII?
+  MMIIIIIIMMMMMMM$????????MMMMMMMIIIIIIZMM
+  MMMMIIIIIMMMMMN??????????MMMMMIIIIIMMMMM
+  MMMMMMNIIIMMMN???7MMMO????MMMIII8MMMMMMM
+  MMMMMMMMMIIMD?+MMMMMMMMM+?+MIIMMMMMMMMMM
+  MMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMM"
 EOF
-
 }
+
+logo
 # Color modifiers
 red=`tput setaf 1`
 green=`tput setaf 2`
@@ -59,7 +49,9 @@ reset=`tput sgr0`
 
 create_shortcut_request() {
   echo ""
-  echo "Do you want to create an shortcut for running the Node[Y/n]"
+  echo "A shortcut (in the form of an alias) can be created for you so that when"
+  echo "you want to start up the Node again, you can by typing just 'aenchain'"
+  echo "Would you like this shortcut to be created for you? [Y/n]"
   read SHORTCUT_ANSWER
   SHORTCUT_ANSWER=$(echo "$SHORTCUT_ANSWER"|tr '/a-z/' '/A-Z/')
   if [ -z $SHORTCUT_ANSWER ];
@@ -67,7 +59,7 @@ create_shortcut_request() {
       SHORTCUT_ANSWER="Y"
   fi
   if [[ $SHORTCUT_ANSWER = "Y" ]]; then
-    echo "alias aenchain='docker run -it -d -p 7900:7900 -p 7901:7901 -p 7902:7902 -p 3000:3000 -v $DATA_PATH/config:/var/aen/resources -v $DATA_PATH/data:/var/aen/data aenco/master-node:latest'" >> $HOME_PATH/.profile
+    echo "alias aenchain='docker run -it -l aen.server -d -p 7900:7900 -p 7901:7901 -p 7902:7902 -p 3000:3000 -v $DATA_PATH/config:/var/aen/resources -v $DATA_PATH/data:/var/aen/data aenco/master-node:latest'" >> $HOME_PATH/.profile
     echo "Node can now be started up by typing 'aenchain' in to terminal"
     source $HOME_PATH/.profile
   fi
@@ -75,7 +67,7 @@ create_shortcut_request() {
 
 run_node() {
   echo -ne "Startup Node"
-  docker run -it -d -p 7900:7900 -p 7901:7901 -p 7902:7902 -p 3000:3000 -v $DATA_PATH/resources:/var/aen/resources -v $DATA_PATH/data:/var/aen aenco/master-node:latest &>/dev/null
+  docker run -it -d -l aen.server -p 7900:7900 -p 7901:7901 -p 7902:7902 -p 3000:3000 -v $DATA_PATH/resources:/var/aen/resources -v $DATA_PATH/data:/var/aen aenco/master-node:latest &>/dev/null
   ok
 }
 
@@ -90,8 +82,9 @@ dump_variables() {
       echo "Docker Binary Path: $DOCKER_BINARY_PATH"
       echo "Device Profile: $DEVICE_PROFILE"
     fi
-    echo "Data Path: $DATA_PATH"
+    echo "Device ID: $DEVICE_ID"
     echo "License Key: $LICENSE_KEY"
+    echo "Data Path: $DATA_PATH"
     echo "Network Identifier: $NETWORK_IDENTIFIER"
     echo "Private Key: $PRIVATE_KEY"
     echo "Public Key: $PUBLIC_KEY"
@@ -137,7 +130,6 @@ URL_DEVICE_REGISTRATION="http://configurator.aencoin.io/device/register"
 URL_DEVICE_CONFIGURATION="http://configurator.aencoin.io/device/###id###/configuration"
 URL_DEVICE_DATA="http://configurator.aencoin.io/device/###id###/data"
 BYPASS_ARCH="false"
-DOCKER_BINARY_PATH="/usr/local/bin/"
 NETWORK_IDENTIFIER="public-test"
 NETWORK_CONFIGURATION="public-test"
 DEVICE_PROFILE="peer"
@@ -201,8 +193,9 @@ while [ $# -gt 0 ]; do
   shift
 done
 
-echo "${blue}--=== Aen Chain Install ($INSTALLER_VERSION) ===--${reset}"
 logo
+echo "${blue}--=== Aen Chain Install ($INSTALLER_VERSION) ===--${reset}"
+
 echo ""
 
 if [ -f $DATA_PATH/device_id ]; then
@@ -299,7 +292,7 @@ done
 ok
 
 echo -ne "Download Runtime"
-docker pull ${IMAGE_NAME} 2>/dev/null
+docker pull ${IMAGE_NAME} > /dev/null 2>&1
 if [ -z $(docker images -q ${IMAGE_NAME}) ]; then
   halt_installation "Could not download Docker image: $IMAGE_NAME"
 fi
@@ -349,7 +342,7 @@ tar xf $DATA_PATH/resources/config.tar.gz --directory $DATA_PATH/resources
 
 URL_DEVICE_DATA=$(sed -e "s/###id###/$DEVICE_ID/g" <<< $URL_DEVICE_DATA)
 curl -k -s -o $DATA_PATH/data.tar.gz --request GET $URL_DEVICE_DATA
-tar xf $DATA_PATH/data.tar.gz --directory $DATA_PATH/data
+tar xf $DATA_PATH/data.tar.gz --directory $DATA_PATH
 ok
 
 echo -ne "Personalise build with private keys"
@@ -364,10 +357,15 @@ create_shortcut_request
 run_node
 
 dump_variables > $DATA_PATH/installation.log
+dump_variables
 echo ""
 echo "${blue}=== Installation Complete ===${reset}"
 echo ""
-echo "A copy of the following parameters have been saved in to $DATA_PATH/installation.log"
+echo "A copy of the above parameters have been saved in to $DATA_PATH/installation.log"
 echo "${red}The private keys used are only known on this device and you should keep them safe${reset}"
 echo ""
-dump_variables
+echo "To see network activity, now run 'docker attach aen.server'."
+echo "If you attach your terminal to session and close it, your node will shutdown"
+echo ""
+echo "For more information, please see our documentation at aencoin.io"
+echo "- The Aenco Team"
