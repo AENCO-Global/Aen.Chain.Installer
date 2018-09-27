@@ -299,7 +299,7 @@ done
 ok
 
 echo -ne "Download Runtime"
-# docker pull ${IMAGE_NAME} 2>/dev/null
+docker pull ${IMAGE_NAME} 2>/dev/null
 if [ -z $(docker images -q ${IMAGE_NAME}) ]; then
   halt_installation "Could not download Docker image: $IMAGE_NAME"
 fi
