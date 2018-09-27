@@ -67,7 +67,7 @@ create_shortcut_request() {
       SHORTCUT_ANSWER="Y"
   fi
   if [[ $SHORTCUT_ANSWER = "Y" ]]; then
-    echo "alias aenchain='docker run -it -d -v $DATA_PATH/config:/var/aen/resources -v $DATA_PATH/data:/var/aen/data aenco/master-node:latest'" >> $HOME_PATH/.profile
+    echo "alias aenchain='docker run -it -d -p 7900:7900 -p 7901:7901 -p 7902:7902 -p 3000:3000 -v $DATA_PATH/config:/var/aen/resources -v $DATA_PATH/data:/var/aen/data aenco/master-node:latest'" >> $HOME_PATH/.profile
     echo "Node can now be started up by typing 'aenchain' in to terminal"
     source $HOME_PATH/.profile
   fi
@@ -75,7 +75,7 @@ create_shortcut_request() {
 
 run_node() {
   echo -ne "Startup Node"
-  docker run -it -d -v $DATA_PATH/resources:/var/aen/resources -v $DATA_PATH/data:/var/aen aenco/master-node:latest &>/dev/null
+  docker run -it -d -p 7900:7900 -p 7901:7901 -p 7902:7902 -p 3000:3000 -v $DATA_PATH/resources:/var/aen/resources -v $DATA_PATH/data:/var/aen aenco/master-node:latest &>/dev/null
   ok
 }
 
