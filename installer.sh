@@ -21,6 +21,9 @@ dump_variables() {
     echo "Harvester Private Key: $HARVESTER_PRIVATE_KEY"
     echo "Harvester Public Key: $HARVESTER_PUBLIC_KEY"
     echo "Harvester Wallet Address: $HARVESTER_ADDRESS"
+    echo "Rest Private Key: $REST_PRIVATE_KEY"
+    echo "Rest Public Key: $REST_PUBLIC_KEY"
+    echo "Rest Wallet Address: $REST_ADDRESS"
 }
 
 # Friendly stop
@@ -91,9 +94,8 @@ create_shortcut_request() {
     fi
     if [[ $SHORTCUT_ANSWER = "Y" ]]; then
 
-
-      echo "alias aenchain='docker start aen.server'" >> $HOME_PATH/.profile
-      echo "Node can now be started up by typing 'aenchain' in to terminal"
+      echo "alias aenchain='docker start -a -i aen.server'" >> $HOME_PATH/.profile
+      echo "Your node can be started by typing 'aenchain' in to terminal"
       source $HOME_PATH/.profile
     fi
   fi
@@ -101,7 +103,15 @@ create_shortcut_request() {
 
 run_node() {
   echo -ne "Startup Node"
-  docker run -it -d --name aen.server -p 7900:7900 -p 7901:7901 -p 7902:7902 -p 3000:3000 -v $DATA_PATH/resources:/var/aen/resources -v $DATA_PATH/data:/var/aen aenco/master-node:latest &>/dev/null
+  docker run -it -d \
+  --name aen.server \
+  -p 3000:3000 \
+  -p 7900:7900 \
+  -p 7901:7901 \
+  -p 7902:7902 \
+  -p 8888:80 \
+  -v $DATA_PATH/resources:/var/aen/resources \
+  -v $DATA_PATH/data:/var/aen/data aenco/master-node:latest
   ok
 }
 
@@ -157,6 +167,9 @@ ADDRESS=""
 HARVESTER_PRIVATE_KEY=""
 HARVESTER_PUBLIC_KEY=""
 HARVESTER_ADDRESS=""
+REST_PRIVATE_KEY=""
+REST_PUBLIC_KEY=""
+REST_ADDRESS=""
 TITLE="default_device"
 
 # Script parameter assignemnt
@@ -295,7 +308,7 @@ ok
 echo -ne "Checking Dependencies"
 case "$OS" in
   Ubuntu)
-    PKGS="docker* curl sed"
+    PKGS="docker* curl lsof sed"
     for pkg in $PKGS; do
         if dpkg-query -W -f'${Status}' "$pkg" 2>/dev/null | grep -q "ok installed"; then
             echo -ne "."
@@ -305,7 +318,7 @@ case "$OS" in
     done
     ;;
   "Arch Linux")
-    PKGS="docker curl sed"
+    PKGS="docker curl lsof sed"
     for pkg in $PKGS; do
         if pacman -Qs $pkg > /dev/null ; then
             echo -ne "."
@@ -375,24 +388,38 @@ while IFS='' read -r LINE || [[ -n "$LINE" ]]; do
     HARVESTER_ADDRESS=$POSSIBLE_VALUE
   fi
 done < /tmp/network_address
+docker run -it ${IMAGE_NAME} ${DOCKER_BINARY_PATH}catapult.tools.address -g 1 -n ${NETWORK_IDENTIFIER} > /tmp/network_address
+while IFS='' read -r LINE || [[ -n "$LINE" ]]; do
+  POSSIBLE_VALUE=$(echo "$LINE" | sed 's/.*\://' | xargs )
+  if [[ "$LINE" =~ "private key"* ]]; then
+    REST_PRIVATE_KEY="$POSSIBLE_VALUE"
+  elif [[ "$LINE" =~ "public key"* ]];then
+    REST_PUBLIC_KEY=$POSSIBLE_VALUE
+  elif [[ "$LINE" =~ "address"* ]]; then
+    REST_ADDRESS=$POSSIBLE_VALUE
+  fi
+done < /tmp/network_address
 ok
 
 echo -ne "Register Device with AEN"
-CURL_REGISTER_STATUS=$(curl -k -s -w %{http_code} -o $DATA_PATH/register_log --request POST $URL_DEVICE_REGISTRATION \
+echo $URL_DEVICE_REGISTRATION
+CURL_REGISTER_STATUS=$(curl -k -s -w %{http_code} \
+  -o $DATA_PATH/register_log \
+  --request POST $URL_DEVICE_REGISTRATION \
   --data "blockchainAddress=$ADDRESS" \
   --data "title=$TITLE" \
   --data "licenseKey=$LICENSE_KEY" \
   --data "deviceSpec=$DEVICE_SPEC" \
   --data "blockchainPublicKey=$PUBLIC_KEY" \
   --data "networkConfiguration=$NETWORK_CONFIGURATION")
+CURL_REGISTER_OUTPUT=$(cat $DATA_PATH/register_log)
 
 # If the output contains anything except ok as status, something went wrong
 if [[ $CURL_REGISTER_STATUS != "200" ]]; then
-  halt_installation ${CURL_REGISTER_OUTPUT}
+  halt_installation "$CURL_REGISTER_STATUS - Problem Registering the device with configurator"
 fi
 
 # Parse the device ID from output and store for possible future use
-CURL_REGISTER_OUTPUT=$(cat $DATA_PATH/register_log)
 DEVICE_ID=${CURL_REGISTER_OUTPUT##*:}
 DEVICE_ID="$(echo $DEVICE_ID | sed 's/[^0-9A-Za-z_-]*//g')"
 echo "$DEVICE_ID" > $DATA_PATH/device_id
@@ -412,6 +439,9 @@ echo -ne "Personalise build with private keys"
 sed -i "s/###USER_PRIVATE_KEY###/$PRIVATE_KEY/g" $DATA_PATH/resources/config-user.properties
 if [ -e "$DATA_PATH/resources/config-harvesting.properties" ]; then
     sed -i "s/###HARVESTER_PRIVATE_KEY###/$HARVESTER_PRIVATE_KEY/g" $DATA_PATH/resources/config-harvesting.properties
+fi
+if [ -e "$DATA_PATH/resources/rest.json" ]; then
+    sed -i "s/###REST_PRIVATE_KEY###/$REST_PRIVATE_KEY/g" $DATA_PATH/resources/rest.json
 fi
 ok
 
