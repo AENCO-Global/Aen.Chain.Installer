@@ -23,8 +23,6 @@ echo "-------------------------------------------"
 
 echo "--=== Transfer files to Remote Server ===--"
 echo "scp ./installer.sh jenkins@$2:$3"
-shopt -s dotglob
-rsync -avzhe ssh  --rsync-path="rsync" ./server/* jenkins@$2:$3
 
 echo "----====== Verify Deployments-List from Remote ======----"
 ssh -p 22 $2 "ls -al $3"
