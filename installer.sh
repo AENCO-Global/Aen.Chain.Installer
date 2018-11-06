@@ -42,7 +42,7 @@ if [[ $# -eq 0 ]] ; then
     halt_installation "No parameters supplied. If you are sure you want to run with no options, use --useDefaults"
 fi
 
-INSTALLER_VERSION=0.2
+INSTALLER_VERSION=###INSTALLER_VERSION###
 
 logo() {
   echo << EOF "
