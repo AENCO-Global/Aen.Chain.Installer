@@ -15,6 +15,7 @@ echo "No tests yet Defined"
 echo "-------------------------------------------"
 
 echo "--=== Modify Version Information ===--"
+ls -la
 # Change the version number
 if [ -e "./installer.sh" ]; then
     sed -i "s/###INSTALLER_VERSION###/$1/g" ./installer.sh
