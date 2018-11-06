@@ -13,7 +13,7 @@ dump_variables() {
     fi
     echo "Device ID: $DEVICE_ID"
     echo "License Key: $LICENSE_KEY"
-    echo "Data Path: $DATA_PATH"
+    echo "AEN Path: $AEN_PATH"
     echo "Network Identifier: $NETWORK_IDENTIFIER"
     echo "Private Key: $PRIVATE_KEY"
     echo "Public Key: $PUBLIC_KEY"
@@ -82,7 +82,7 @@ create_shortcut_request() {
   echo "A shortcut (in the form of an alias) can be created for you so that when"
   echo "you want to start up the Node again, you can by typing just 'aenchain'"
 
-  if grep -q aenchain "$HOME_PATH/.profile"; then
+  if grep -q aenchain "$HOME/.profile"; then
     echo "${green}Shortcut already exists${reset}"
   else
     echo "Would you like this shortcut to be created for you? [Y/n]"
@@ -94,25 +94,32 @@ create_shortcut_request() {
     fi
     if [[ $SHORTCUT_ANSWER = "Y" ]]; then
 
-      echo "alias aenchain='docker start -a -i aen.server'" >> $HOME_PATH/.profile
+      echo "alias aenchain='docker start -a -i aen.server'" >> $HOME/.profile
       echo "Your node can be started by typing 'aenchain' in to terminal"
-      source $HOME_PATH/.profile
+      source $HOME/.profile
     fi
   fi
 }
 
 run_node() {
   echo -ne "Startup Node"
+
+  if [ ! "$(docker ps -q -f name=aen.server)" ]; then
+    if [ "$(docker ps -aq -f status=exited -f name=aen.server)" ]; then
+        # cleanup
+        docker rm aen.server
+    fi
+  fi
   docker run -it -d \
-  --name aen.server \
-  -p 3000:3000 \
-  -p 7900:7900 \
-  -p 7901:7901 \
-  -p 7902:7902 \
-  -p 8888:80 \
-  -v $DATA_PATH/resources:/var/aen/resources \
-  -v $DATA_PATH/data:/var/aen/data aenco/master-node:latest
-  ok
+    --name aen.server \
+    -p 3000:3000 \
+    -p 7900:7900 \
+    -p 7901:7901 \
+    -p 7902:7902 \
+    -p 8888:80 \
+    -v $AEN_PATH/resources:/var/aen/resources \
+    -v $AEN_PATH/data:/var/aen/data aenco/master-node:latest
+    ok
 }
 
 ok() {
@@ -126,6 +133,7 @@ display_usage() {
   echo ""
   echo " --dataPath          Output path for configuration and block data"
   echo " --licenseKey        Your AENCoin License key"
+  echo " --deviceName        Alias for the device"
   echo " --networkIdentifier Key Used to identify the block chain network"
   echo " --deviceProfile     Type of node that we are setting up"
   echo " --useDefaults       Run the setup using default options"
@@ -143,15 +151,14 @@ display_usage() {
 }
 
 DEBUG_MODE="false"
-HOME_PATH=$HOME
-DATA_PATH=$HOME/.local/aen
+AEN_PATH=$HOME/.aen
 LICENSE_KEY="000000-000000-000000-000000-000000"
 IMAGE_NAME="aenco/master-node:latest"
 
 # Local Development
-# URL_BASE="http://192.168.56.1:8080/api"
+URL_BASE="http://localhost:8080"
 # Live
-URL_BASE="http://configurator.aencoin.io"
+# URL_BASE="http://configurator.aencoin.io"
 
 URL_DEVICE_REGISTRATION="$URL_BASE/device/register"
 URL_DEVICE_CONFIGURATION="$URL_BASE/device/###id###/configuration"
@@ -170,49 +177,49 @@ HARVESTER_ADDRESS=""
 REST_PRIVATE_KEY=""
 REST_PUBLIC_KEY=""
 REST_ADDRESS=""
-TITLE="default_device"
+DEVICE_NAME="default_device"
 
 # Script parameter assignemnt
 while [ $# -gt 0 ]; do
   case "$1" in
-    --help)
+    --help*)
       display_usage
       ;;
-    --dataPath=*)
-      DATA_PATH="${1#*=}"
+    --dataPath*)
+      AEN_PATH="${1#*=}"
       ;;
-    --useDefaults)
+    --useDefaults*)
       echo "--- Running with default parameters ---"
       ;;
-    --debugInfo)
+    --debugInfo*)
       DEBUG_MODE="true"
       ;;
-    --bypassArch)
+    --bypassArch*)
       BYPASS_ARCH="true"
       ;;
-    --licenseKey=*)
+    --licenseKey*)
       LICENSE_KEY="${1#*=}"
       ;;
-    --imageName=*)
+    --imageName*)
       IMAGE_NAME="${1#*=}"
       ;;
-    --registrationUrl=*)
+    --registrationUrl*)
       URL_DEVICE_REGISTRATION="${1#*=}"
       ;;
-    --dockerPath=*)
+    --dockerPath*)
       DOCKER_BINARY_PATH="${1#*=}"
       ;;
-    --networkIdentifier=*)
+    --networkIdentifier*)
       NETWORK_IDENTIFIER="${1#*=}"
       ;;
-    --networkConfiguration=*)
+    --networkConfiguration*)
       NETWORK_CONFIGURATION="${1#*=}"
       ;;
-    --deviceSpec=*)
-      DEVICE_SPEC="${1#*=}"
+    --deviceProfile*)
+      DEVICE_PROFILE="${1#*=}"
       ;;
-    --title=*)
-      TITLE="${1#*=}"
+    --deviceName*)
+      DEVICE_NAME="${1#*=}"
       ;;
     *)
       halt_installation "Unrecognized parameter used $1"
@@ -232,7 +239,7 @@ echo ""
 
 
 # Check if installation has already been done with local file check
-if [ -f $DATA_PATH/device_id ]; then
+if [ -f $AEN_PATH/device_id ]; then
   echo "${red}Device has already been configured${reset}"
   echo "Would you like to reset this device? [y/N]"
   read SHORTCUT_ANSWER
@@ -242,7 +249,7 @@ if [ -f $DATA_PATH/device_id ]; then
       SHORTCUT_ANSWER="N"
   fi
   if [[ $SHORTCUT_ANSWER = "Y" ]]; then
-      rm -R $DATA_PATH/*
+      rm -R $AEN_PATH/*
   else
     create_shortcut_request
     run_node
@@ -257,12 +264,12 @@ if [[ $LICENSE_KEY = "000000-000000-000000-000000-000000" ]]; then
 fi
 
 echo -ne "Create paths"
-mkdir -p $DATA_PATH &>/dev/null
-if [ ! -d "$DATA_PATH" ]; then
-  halt_installation "Could not create data path: $DATA_PATH"
+mkdir -p $AEN_PATH &>/dev/null
+if [ ! -d "$AEN_PATH" ]; then
+  halt_installation "Could not create data path: $AEN_PATH"
 fi
-mkdir -p $DATA_PATH/data
-mkdir -p $DATA_PATH/resources
+mkdir -p $AEN_PATH/data
+mkdir -p $AEN_PATH/resources
 ok
 
 echo -ne "Check Architecture"
@@ -347,9 +354,9 @@ ok
 
 # Check whether ports are available
 echo -ne "Checking Connectivity"
-PORTS="7900 7901"
+PORTS="3000 7900 7901 7902"
 for port in $PORTS; do
-  PORT_RESULT="$(lsof -i:${port})"
+  PORT_RESULT="$(lsof -i :${port})"
   if [ -z "$PORT_RESULT"]; then
     echo -ne "."
   else
@@ -365,8 +372,8 @@ if [ -z $(docker images -q ${IMAGE_NAME}) ]; then
 fi
 ok
 
-echo -ne "Generate Personal address"
-docker run -it ${IMAGE_NAME} ${DOCKER_BINARY_PATH}catapult.tools.address -g 1 -n ${NETWORK_IDENTIFIER} > /tmp/network_address
+echo -ne "Generate addresses"
+docker run -it ${IMAGE_NAME} catapult.tools.address -g 1 -n ${NETWORK_IDENTIFIER} > /tmp/network_address
 while IFS='' read -r LINE || [[ -n "$LINE" ]]; do
   POSSIBLE_VALUE=$(echo "$LINE" | sed 's/.*\://' | xargs )
   if [[ "$LINE" =~ "private key"* ]]; then
@@ -377,7 +384,7 @@ while IFS='' read -r LINE || [[ -n "$LINE" ]]; do
     ADDRESS=$POSSIBLE_VALUE
   fi
 done < /tmp/network_address
-docker run -it ${IMAGE_NAME} ${DOCKER_BINARY_PATH}catapult.tools.address -g 1 -n ${NETWORK_IDENTIFIER} > /tmp/network_address
+docker run -it ${IMAGE_NAME} catapult.tools.address -g 1 -n ${NETWORK_IDENTIFIER} > /tmp/network_address
 while IFS='' read -r LINE || [[ -n "$LINE" ]]; do
   POSSIBLE_VALUE=$(echo "$LINE" | sed 's/.*\://' | xargs )
   if [[ "$LINE" =~ "private key"* ]]; then
@@ -388,7 +395,7 @@ while IFS='' read -r LINE || [[ -n "$LINE" ]]; do
     HARVESTER_ADDRESS=$POSSIBLE_VALUE
   fi
 done < /tmp/network_address
-docker run -it ${IMAGE_NAME} ${DOCKER_BINARY_PATH}catapult.tools.address -g 1 -n ${NETWORK_IDENTIFIER} > /tmp/network_address
+docker run -it ${IMAGE_NAME} catapult.tools.address -g 1 -n ${NETWORK_IDENTIFIER} > /tmp/network_address
 while IFS='' read -r LINE || [[ -n "$LINE" ]]; do
   POSSIBLE_VALUE=$(echo "$LINE" | sed 's/.*\://' | xargs )
   if [[ "$LINE" =~ "private key"* ]]; then
@@ -402,17 +409,16 @@ done < /tmp/network_address
 ok
 
 echo -ne "Register Device with AEN"
-echo $URL_DEVICE_REGISTRATION
 CURL_REGISTER_STATUS=$(curl -k -s -w %{http_code} \
-  -o $DATA_PATH/register_log \
+  -o $AEN_PATH/register_log \
   --request POST $URL_DEVICE_REGISTRATION \
   --data "blockchainAddress=$ADDRESS" \
-  --data "title=$TITLE" \
+  --data "title=$DEVICE_NAME" \
   --data "licenseKey=$LICENSE_KEY" \
-  --data "deviceSpec=$DEVICE_SPEC" \
+  --data "deviceProfile=$DEVICE_PROFILE" \
   --data "blockchainPublicKey=$PUBLIC_KEY" \
   --data "networkConfiguration=$NETWORK_CONFIGURATION")
-CURL_REGISTER_OUTPUT=$(cat $DATA_PATH/register_log)
+CURL_REGISTER_OUTPUT=$(cat $AEN_PATH/register_log)
 
 # If the output contains anything except ok as status, something went wrong
 if [[ $CURL_REGISTER_STATUS != "200" ]]; then
@@ -422,38 +428,38 @@ fi
 # Parse the device ID from output and store for possible future use
 DEVICE_ID=${CURL_REGISTER_OUTPUT##*:}
 DEVICE_ID="$(echo $DEVICE_ID | sed 's/[^0-9A-Za-z_-]*//g')"
-echo "$DEVICE_ID" > $DATA_PATH/device_id
+echo "$DEVICE_ID" > $AEN_PATH/device_id
 
 # Get the configuration and data files for bootstrapping
 URL_DEVICE_CONFIGURATION=$(sed -e "s/###id###/$DEVICE_ID/g" <<< $URL_DEVICE_CONFIGURATION)
-curl -k -s -o $DATA_PATH/config.tar.gz --request GET $URL_DEVICE_CONFIGURATION
-tar xf $DATA_PATH/config.tar.gz --directory $DATA_PATH/resources
+curl -k -s -o $AEN_PATH/resources.tar.gz --request GET $URL_DEVICE_CONFIGURATION
+tar xf $AEN_PATH/resources.tar.gz --directory $AEN_PATH/resources
 
 URL_DEVICE_DATA=$(sed -e "s/###id###/$DEVICE_ID/g" <<< $URL_DEVICE_DATA)
-curl -k -s -o $DATA_PATH/data.tar.gz --request GET $URL_DEVICE_DATA
-tar xf $DATA_PATH/data.tar.gz --directory $DATA_PATH
+curl -k -s -o $AEN_PATH/data.tar.gz --request GET $URL_DEVICE_DATA
+tar xf $AEN_PATH/data.tar.gz --directory $AEN_PATH
 ok
 
 echo -ne "Personalise build with private keys"
 # Find and replace private key details
-sed -i "s/###USER_PRIVATE_KEY###/$PRIVATE_KEY/g" $DATA_PATH/resources/config-user.properties
-if [ -e "$DATA_PATH/resources/config-harvesting.properties" ]; then
-    sed -i "s/###HARVESTER_PRIVATE_KEY###/$HARVESTER_PRIVATE_KEY/g" $DATA_PATH/resources/config-harvesting.properties
+sed -i "s/###USER_PRIVATE_KEY###/$PRIVATE_KEY/g" $AEN_PATH/resources/config-user.properties
+if [ -e "$AEN_PATH/resources/config-harvesting.properties" ]; then
+    sed -i "s/###HARVESTER_PRIVATE_KEY###/$HARVESTER_PRIVATE_KEY/g" $AEN_PATH/resources/config-harvesting.properties
 fi
-if [ -e "$DATA_PATH/resources/rest.json" ]; then
-    sed -i "s/###REST_PRIVATE_KEY###/$REST_PRIVATE_KEY/g" $DATA_PATH/resources/rest.json
+if [ -e "$AEN_PATH/resources/rest.json" ]; then
+    sed -i "s/###REST_PRIVATE_KEY###/$REST_PRIVATE_KEY/g" $AEN_PATH/resources/rest.json
 fi
 ok
 
 create_shortcut_request
 run_node
 
-dump_variables > $DATA_PATH/installation.log
+dump_variables > $AEN_PATH/installation.log
 dump_variables
 echo ""
 echo "${green}=== Installation Complete ===${reset}"
 echo ""
-echo "A copy of the above parameters have been saved in to $DATA_PATH/installation.log"
+echo "A copy of the above parameters have been saved in to $AEN_PATH/installation.log"
 echo "${red}The private keys used are only known on this device and you should keep them safe${reset}"
 echo ""
 echo "To see network activity, now run 'docker attach aen.server'."
