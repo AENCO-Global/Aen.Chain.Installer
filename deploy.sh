@@ -15,15 +15,16 @@ echo "No tests yet Defined"
 echo "-------------------------------------------"
 
 echo "--=== Modify Version Information ===--"
-ls -la
 # Change the version number
-if [ -e "./installer.sh" ]; then
-    sed -i "s/###INSTALLER_VERSION###/$1/g" ./installer.sh
+if [ -e "installer.sh" ]; then
+    sed -i "s/###INSTALLER_VERSION###/$1/g" installer.sh
 fi
 echo "-------------------------------------------"
 
 echo "--=== Transfer files to Remote Server ===--"
-echo "scp ./installer.sh jenkins@$2:$3"
+echo "scp installer.sh jenkins@$2:$3/installer.sh"
+scp installer.sh jenkins@$2:$3/installer.sh
+echo "-------------------------------------------"
 
 echo "----====== Verify Deployments-List from Remote ======----"
 ssh -p 22 $2 "ls -al $3"
