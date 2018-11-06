@@ -18,8 +18,6 @@ echo "--=== Modify Version Information ===--"
 # Change the version number
 if [ -e "installer.sh" ]; then
     sed -i "s/###INSTALLER_VERSION###/$1/g" installer.sh
-    sed -i 's/URL_BASE="http://localhost:8080"/# URL_BASE="http://localhost:8080"/g' installer.sh
-    sed -i 's/# URL_BASE="http://configurator/URL_BASE="http://configurator/g' installer.sh
 fi
 echo "-------------------------------------------"
 
