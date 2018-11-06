@@ -156,9 +156,9 @@ LICENSE_KEY="000000-000000-000000-000000-000000"
 IMAGE_NAME="aenco/master-node:latest"
 
 # Local Development
-URL_BASE="http://localhost:8080"
+# URL_BASE="http://localhost:8080"
 # Live
-# URL_BASE="http://configurator.aencoin.io"
+URL_BASE="http://configurator.aencoin.io"
 
 URL_DEVICE_REGISTRATION="$URL_BASE/device/register"
 URL_DEVICE_CONFIGURATION="$URL_BASE/device/###id###/configuration"
